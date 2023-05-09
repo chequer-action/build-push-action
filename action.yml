@@ -102,6 +102,10 @@ inputs:
     description: "GitHub Token used to authenticate against a repository for Git context"
     default: ${{ github.token }}
     required: false
+  remove-local:
+    description: "Remove runner local image"
+    default: 'true'
+    required: false
 
 outputs:
   imageid:

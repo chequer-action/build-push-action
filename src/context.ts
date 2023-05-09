@@ -41,6 +41,7 @@ export interface Inputs {
   target: string;
   ulimit: string[];
   githubToken: string;
+  removeLocal: boolean;
 }
 
 export function defaultContext(): string {
@@ -103,7 +104,8 @@ export async function getInputs(defaultContext: string): Promise<Inputs> {
     tags: await getInputList('tags'),
     target: core.getInput('target'),
     ulimit: await getInputList('ulimit', true),
-    githubToken: core.getInput('github-token')
+    githubToken: core.getInput('github-token'),
+    removeLocal: core.getBooleanInput('remove-local')
   };
 }
 

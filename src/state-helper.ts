@@ -10,3 +10,8 @@ export function setTmpDir(tmpDir: string) {
 if (!IsPost) {
   core.saveState('isPost', 'true');
 }
+
+export const digest = core.getState('digest');
+export function setDigest(digest: string) {
+  core.saveState('digest', digest);
+}

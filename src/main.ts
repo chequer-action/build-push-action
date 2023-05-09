@@ -77,6 +77,7 @@ async function run(): Promise<void> {
       await core.group(`Digest`, async () => {
         core.info(digest);
         core.setOutput('digest', digest);
+        stateHelper.setDigest(digest);
       });
     }
     if (metadata) {
@@ -91,10 +92,19 @@ async function run(): Promise<void> {
 }
 
 async function cleanup(): Promise<void> {
+  const defContext = context.defaultContext();
+  const inputs: context.Inputs = await context.getInputs(defContext);
+
   if (stateHelper.tmpDir.length > 0) {
     core.startGroup(`Removing temp folder ${stateHelper.tmpDir}`);
     fs.rmSync(stateHelper.tmpDir, {recursive: true});
     core.endGroup();
+  }
+
+  if (inputs.removeLocal && stateHelper.digest.length > 0) {
+    await core.group(`Removing local image ${stateHelper.digest}`, async () => {
+      await exec.exec('docker', ['rmi', '-f', stateHelper.digest]);
+    });
   }
 }
 
