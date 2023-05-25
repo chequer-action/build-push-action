@@ -11,7 +11,7 @@ if (!IsPost) {
   core.saveState('isPost', 'true');
 }
 
-export const digest = core.getState('digest');
-export function setDigest(digest: string) {
-  core.saveState('digest', digest);
+export const imageID = core.getState('imageID');
+export function setImageID(imageID: string) {
+  core.saveState('imageID', imageID);
 }

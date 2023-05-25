@@ -71,13 +71,13 @@ async function run(): Promise<void> {
       await core.group(`ImageID`, async () => {
         core.info(imageID);
         core.setOutput('imageid', imageID);
+        stateHelper.setImageID(imageID);
       });
     }
     if (digest) {
       await core.group(`Digest`, async () => {
         core.info(digest);
         core.setOutput('digest', digest);
-        stateHelper.setDigest(digest);
       });
     }
     if (metadata) {
@@ -101,9 +101,9 @@ async function cleanup(): Promise<void> {
     core.endGroup();
   }
 
-  if (inputs.removeLocal && stateHelper.digest.length > 0) {
-    await core.group(`Removing local image ${stateHelper.digest}`, async () => {
-      await exec.exec('docker', ['rmi', '-f', stateHelper.digest]);
+  if (inputs.removeLocal && stateHelper.imageID.length > 0) {
+    await core.group(`Removing local image ${stateHelper.imageID}`, async () => {
+      await exec.exec('docker', ['rmi', '-f', stateHelper.imageID]);
     });
   }
 }
