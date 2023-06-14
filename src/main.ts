@@ -87,10 +87,10 @@ async function run(): Promise<void> {
       });
     }
 
-    if (inputs.removeImage) {
-      await core.group(`Removing local image ${stateHelper.imageID}`, async () => {
+    if (inputs.removeImage && imageID) {
+      await core.group(`Removing local image ${imageID}`, async () => {
         try {
-          await exec.exec('docker', ['rmi', '-f', stateHelper.imageID]);
+          await exec.exec('docker', ['rmi', '-f', imageID]);
         } catch (e) {
           core.error(`Failed to remove image: ${e}`);
         }

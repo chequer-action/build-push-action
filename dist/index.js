@@ -27753,10 +27753,10 @@ function run() {
                     core.setOutput('metadata', metadata);
                 }));
             }
-            if (inputs.removeImage) {
-                yield core.group(`Removing local image ${stateHelper.imageID}`, () => __awaiter(this, void 0, void 0, function* () {
+            if (inputs.removeImage && imageID) {
+                yield core.group(`Removing local image ${imageID}`, () => __awaiter(this, void 0, void 0, function* () {
                     try {
-                        yield exec.exec('docker', ['rmi', '-f', stateHelper.imageID]);
+                        yield exec.exec('docker', ['rmi', '-f', imageID]);
                     }
                     catch (e) {
                         core.error(`Failed to remove image: ${e}`);
