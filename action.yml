@@ -102,8 +102,12 @@ inputs:
     description: "GitHub Token used to authenticate against a repository for Git context"
     default: ${{ github.token }}
     required: false
-  remove-local:
-    description: "Remove runner local image"
+  remove-image:
+    description: "Remove image after build and push"
+    default: 'true'
+    required: false
+  remove-build-cache:
+    description: "Remove build cache after build and push"
     default: 'true'
     required: false
 

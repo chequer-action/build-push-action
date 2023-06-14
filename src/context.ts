@@ -41,7 +41,8 @@ export interface Inputs {
   target: string;
   ulimit: string[];
   githubToken: string;
-  removeLocal: boolean;
+  removeImage: boolean;
+  removeBuildCache: boolean;
 }
 
 export function defaultContext(): string {
@@ -105,7 +106,8 @@ export async function getInputs(defaultContext: string): Promise<Inputs> {
     target: core.getInput('target'),
     ulimit: await getInputList('ulimit', true),
     githubToken: core.getInput('github-token'),
-    removeLocal: core.getBooleanInput('remove-local')
+    removeImage: core.getBooleanInput('remove-image'),
+    removeBuildCache: core.getBooleanInput('remove-build-cache')
   };
 }
 
