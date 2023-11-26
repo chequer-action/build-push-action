@@ -19,6 +19,18 @@ ___
   * [Git context](#git-context)
   * [Path context](#path-context)
 * [Examples](#examples)
+  * [Multi-platform image](https://docs.docker.com/build/ci/github-actions/multi-platform/)
+  * [Secrets](https://docs.docker.com/build/ci/github-actions/secrets/)
+  * [Push to multi-registries](https://docs.docker.com/build/ci/github-actions/push-multi-registries/)
+  * [Manage tags and labels](https://docs.docker.com/build/ci/github-actions/manage-tags-labels/)
+  * [Cache management](https://docs.docker.com/build/ci/github-actions/cache/)
+  * [Export to Docker](https://docs.docker.com/build/ci/github-actions/export-docker/)
+  * [Test before push](https://docs.docker.com/build/ci/github-actions/test-before-push/)
+  * [Local registry](https://docs.docker.com/build/ci/github-actions/local-registry/)
+  * [Share built image between jobs](https://docs.docker.com/build/ci/github-actions/share-image-jobs/)
+  * [Named contexts](https://docs.docker.com/build/ci/github-actions/named-contexts/)
+  * [Copy image between registries](https://docs.docker.com/build/ci/github-actions/copy-image-registries/)
+  * [Update Docker Hub repo description](https://docs.docker.com/build/ci/github-actions/update-dockerhub-desc/)
 * [Customizing](#customizing)
   * [inputs](#inputs)
   * [outputs](#outputs)
@@ -74,7 +86,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       -
         name: Build and push
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           push: true
           tags: user/app:latest
@@ -99,7 +111,7 @@ to the default Git context:
         uses: docker/setup-buildx-action@v2
       -
         name: Build and push
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           context: "{{defaultContext}}:mysubdir"
           push: true
@@ -116,13 +128,13 @@ to the default Git context:
 
 Building from the current repository automatically uses the [GitHub Token](https://docs.github.com/en/actions/security-guides/automatic-token-authentication),
 so it does not need to be passed. If you want to authenticate against another
-private repository, you have to use a [secret](https://docs.docker.com/build/ci/github-actions/examples/#secrets)
+private repository, you have to use a [secret](https://docs.docker.com/build/ci/github-actions/secrets)
 named `GIT_AUTH_TOKEN` to be able to authenticate against it with Buildx:
 
 ```yaml
       -
         name: Build and push
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           push: true
           tags: user/app:latest
@@ -161,7 +173,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       -
         name: Build and push
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           context: .
           push: true
@@ -170,7 +182,18 @@ jobs:
 
 ## Examples
 
-See https://docs.docker.com/build/ci/github-actions/examples/.
+* [Multi-platform image](https://docs.docker.com/build/ci/github-actions/multi-platform/)
+* [Secrets](https://docs.docker.com/build/ci/github-actions/secrets/)
+* [Push to multi-registries](https://docs.docker.com/build/ci/github-actions/push-multi-registries/)
+* [Manage tags and labels](https://docs.docker.com/build/ci/github-actions/manage-tags-labels/)
+* [Cache management](https://docs.docker.com/build/ci/github-actions/cache/)
+* [Export to Docker](https://docs.docker.com/build/ci/github-actions/export-docker/)
+* [Test before push](https://docs.docker.com/build/ci/github-actions/test-before-push/)
+* [Local registry](https://docs.docker.com/build/ci/github-actions/local-registry/)
+* [Share built image between jobs](https://docs.docker.com/build/ci/github-actions/share-image-jobs/)
+* [Named contexts](https://docs.docker.com/build/ci/github-actions/named-contexts/)
+* [Copy image between registries](https://docs.docker.com/build/ci/github-actions/copy-image-registries/)
+* [Update Docker Hub repo description](https://docs.docker.com/build/ci/github-actions/update-dockerhub-desc/)
 
 ## Customizing
 

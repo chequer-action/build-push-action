@@ -1,5 +1,9 @@
 name: ci
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   workflow_dispatch:
     inputs:
@@ -11,12 +15,13 @@ on:
         description: 'BuildKit image'
         default: 'moby/buildkit:buildx-stable-1'
         required: false
+  schedule:
+    - cron: '0 10 * * *'
   push:
     branches:
       - 'master'
+      - 'releases/v*'
   pull_request:
-    branches:
-      - 'master'
 
 env:
   BUILDX_VERSION: latest
@@ -28,7 +33,7 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: action
       -
@@ -54,7 +59,7 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: action
       -
@@ -103,7 +108,7 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: action
       -
@@ -162,7 +167,7 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       -
         name: Set up QEMU
         uses: docker/setup-qemu-action@v2
@@ -199,16 +204,79 @@ jobs:
             exit 1
           fi
 
+  example:
+    runs-on: ubuntu-latest
+    env:
+      DOCKER_IMAGE: localhost:5000/name/app
+    services:
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v4
+      -
+        name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.DOCKER_IMAGE }}
+          tags: |
+            type=schedule
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          version: ${{ inputs.buildx-version || env.BUILDX_VERSION }}
+          driver-opts: |
+            network=host
+            image=${{ inputs.buildkit-image || env.BUILDKIT_IMAGE }}
+      -
+        name: Build and export to Docker client
+        uses: ./
+        with:
+          context: ./test
+          file: ./test/Dockerfile
+          load: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+      -
+        name: Build and push to local registry
+        uses: ./
+        with:
+          context: ./test
+          file: ./test/Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+      -
+        name: Inspect image
+        run: |
+          docker image inspect ${{ env.DOCKER_IMAGE }}:${{ steps.meta.outputs.version }}
+      -
+        name: Check manifest
+        if: github.event_name != 'pull_request'
+        run: |
+          docker buildx imagetools inspect ${{ env.DOCKER_IMAGE }}:${{ steps.meta.outputs.version }} --format '{{json .}}'
+
   error:
     runs-on: ubuntu-latest
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       -
         name: Stop docker
         run: |
-          sudo systemctl stop docker
+          sudo systemctl stop docker docker.socket
       -
         name: Build
         id: docker_build
@@ -231,7 +299,7 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       -
         name: Set up QEMU
         uses: docker/setup-qemu-action@v2
@@ -272,7 +340,7 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       -
         name: Build
         id: docker_build
@@ -288,7 +356,7 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       -
         name: Build
         uses: ./
@@ -307,7 +375,7 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       -
         name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -330,7 +398,7 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       -
         name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -354,7 +422,7 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       -
         name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -376,7 +444,7 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       -
         name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -401,7 +469,7 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       -
         name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -424,7 +492,7 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       -
         name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -444,35 +512,12 @@ jobs:
             docker:10.180.0.1
             foo:10.0.0.1
 
-  build-contexts:
-    runs-on: ubuntu-latest
-    steps:
-      -
-        name: Checkout
-        uses: actions/checkout@v3
-      -
-        name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-        with:
-          version: ${{ inputs.buildx-version || env.BUILDX_VERSION }}
-          driver-opts: |
-            image=${{ inputs.buildkit-image || env.BUILDKIT_IMAGE }}
-      -
-        name: Build
-        uses: ./
-        with:
-          context: ./test
-          file: ./test/buildcontext.Dockerfile
-          build-contexts: |
-            alpine=docker-image://debian:stable-slim
-          tags: name/app:latest
-
   no-cache-filters:
     runs-on: ubuntu-latest
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       -
         name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -506,7 +551,7 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       -
         name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -537,7 +582,7 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       -
         name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -576,7 +621,7 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       -
         name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -633,7 +678,7 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       -
         name: Set up QEMU
         uses: docker/setup-qemu-action@v2
@@ -694,12 +739,6 @@ jobs:
           - driver: docker-container
             load: true
             push: true
-          - driver: docker
-            load: false
-            push: false
-          - driver: docker-container
-            load: false
-            push: false
     services:
       registry:
         image: registry:2
@@ -708,7 +747,7 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       -
         name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -733,9 +772,13 @@ jobs:
           docker image ls --no-trunc
       -
         name: Check digest
-        if: ${{ matrix.push }}
         run: |
-          if [ -z "${{ steps.docker_build.outputs.digest }}" ]; then
+          if [[ "${{ matrix.driver }}" = "docker-container" ]] && [[ "${{ matrix.load }}" = "false" ]] && [[ "${{ matrix.push }}" = "false" ]]; then
+            if [ -n "${{ steps.docker_build.outputs.digest }}" ]; then
+              echo "::error::Digest should be empty"
+              exit 1
+            fi
+          elif [[ "${{ matrix.push }}" = "true" ]] && [[ -z "${{ steps.docker_build.outputs.digest }}" ]]; then
             echo "::error::Digest should not be empty"
             exit 1
           fi
@@ -748,7 +791,12 @@ jobs:
       -
         name: Check image ID
         run: |
-          if [ -z "${{ steps.docker_build.outputs.imageid }}" ]; then
+          if [[ "${{ matrix.driver }}" = "docker-container" ]] && [[ "${{ matrix.load }}" = "false" ]] && [[ "${{ matrix.push }}" = "false" ]]; then
+            if [ -n "${{ steps.docker_build.outputs.imageid }}" ]; then
+              echo "::error::Image ID should be empty"
+              exit 1
+            fi
+          elif [ -z "${{ steps.docker_build.outputs.imageid }}" ]; then
             echo "::error::Image ID should not be empty"
             exit 1
           fi
@@ -769,7 +817,7 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       -
         name: Set up QEMU
         uses: docker/setup-qemu-action@v2
@@ -818,7 +866,7 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       -
         name: Set up QEMU
         uses: docker/setup-qemu-action@v2
@@ -854,11 +902,15 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       -
-        name: Uninstall moby cli
+        name: Uninstall docker cli
         run: |
-          sudo apt-get purge -y moby-cli moby-buildx
+          if dpkg -s "docker-ce" >/dev/null 2>&1; then
+            sudo dpkg -r --force-depends docker-ce-cli docker-buildx-plugin
+          else
+            sudo apt-get purge -y moby-cli moby-buildx
+          fi
       -
         name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -867,6 +919,181 @@ jobs:
           driver-opts: |
             network=host
             image=${{ inputs.buildkit-image || env.BUILDKIT_IMAGE }}
+      -
+        name: Build
+        uses: ./
+        with:
+          context: ./test
+          file: ./test/Dockerfile
+
+  named-context-pin:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v4
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          version: ${{ inputs.buildx-version || env.BUILDX_VERSION }}
+          driver-opts: |
+            image=${{ inputs.buildkit-image || env.BUILDKIT_IMAGE }}
+      -
+        name: Build base image
+        uses: ./
+        with:
+          context: ./test
+          file: ./test/named-context.Dockerfile
+          build-contexts: |
+            alpine=docker-image://alpine:edge
+
+  named-context-docker:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v4
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          version: ${{ inputs.buildx-version || env.BUILDX_VERSION }}
+          driver: docker
+      -
+        name: Build base image
+        uses: ./
+        with:
+          context: ./test
+          file: ./test/named-context-base.Dockerfile
+          load: true
+          tags: my-base-image:local
+      -
+        name: Build
+        uses: ./
+        with:
+          context: ./test
+          file: ./test/named-context.Dockerfile
+          build-contexts: |
+            base=docker-image://my-base-image:local
+
+  named-context-container:
+    runs-on: ubuntu-latest
+    services:
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v4
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          version: ${{ inputs.buildx-version || env.BUILDX_VERSION }}
+          driver-opts: |
+            image=${{ inputs.buildkit-image || env.BUILDKIT_IMAGE }}
+            network=host
+      -
+        name: Build base image
+        uses: ./
+        with:
+          context: ./test
+          file: ./test/named-context-base.Dockerfile
+          tags: localhost:5000/my-base-image:latest
+          push: true
+      -
+        name: Build
+        uses: ./
+        with:
+          context: ./test
+          file: ./test/named-context.Dockerfile
+          build-contexts: |
+            alpine=docker-image://localhost:5000/my-base-image:latest
+
+  docker-config-malformed:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v4
+      -
+        name: Set malformed docker config
+        run: |
+          mkdir -p ~/.docker
+          echo 'foo_bar' >> ~/.docker/config.json
+      -
+        name: Build
+        uses: ./
+        with:
+          context: ./test
+
+  proxy-docker-config:
+    runs-on: ubuntu-latest
+    services:
+      squid-proxy:
+        image: ubuntu/squid:latest
+        ports:
+          - 3128:3128
+    steps:
+      -
+        name: Check proxy
+        run: |
+          netstat -aptn
+          curl --retry 5 --retry-all-errors --retry-delay 0 --connect-timeout 5 --proxy http://127.0.0.1:3128 -v --insecure --head https://www.google.com
+      -
+        name: Checkout
+        uses: actions/checkout@v4
+      -
+        name: Set proxy config
+        run: |
+          mkdir -p ~/.docker
+          echo '{"proxies":{"default":{"httpProxy":"http://127.0.0.1:3128","httpsProxy":"http://127.0.0.1:3128"}}}' > ~/.docker/config.json
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          version: ${{ inputs.buildx-version || env.BUILDX_VERSION }}
+          driver-opts: |
+            image=${{ inputs.buildkit-image || env.BUILDKIT_IMAGE }}
+            network=host
+          buildkitd-flags: --debug
+      -
+        name: Build
+        uses: ./
+        with:
+          context: ./test
+          file: ./test/proxy.Dockerfile
+
+  proxy-buildkitd:
+    runs-on: ubuntu-latest
+    services:
+      squid-proxy:
+        image: ubuntu/squid:latest
+        ports:
+          - 3128:3128
+    steps:
+      -
+        name: Check proxy
+        run: |
+          netstat -aptn
+          curl --retry 5 --retry-all-errors --retry-delay 0 --connect-timeout 5 --proxy http://127.0.0.1:3128 -v --insecure --head https://www.google.com
+      -
+        name: Checkout
+        uses: actions/checkout@v4
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          version: ${{ inputs.buildx-version || env.BUILDX_VERSION }}
+          driver-opts: |
+            image=${{ inputs.buildkit-image || env.BUILDKIT_IMAGE }}
+            network=host
+            env.http_proxy=http://127.0.0.1:3128
+            env.https_proxy=http://127.0.0.1:3128
+          buildkitd-flags: --debug
       -
         name: Build
         uses: ./
