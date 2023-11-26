@@ -109,7 +109,7 @@ actionsToolkit.run(
     if (inputs.removeImage && imageID) {
       await core.group(`Removing local image ${imageID}`, async () => {
         try {
-          await exec.exec('docker', ['rmi', '-f', imageID]);
+          await Exec.exec('docker', ['rmi', '-f', imageID]);
         } catch (e) {
           core.error(`Failed to remove image: ${e}`);
         }
@@ -119,7 +119,7 @@ actionsToolkit.run(
     if (inputs.removeBuildCache) {
       await core.group(`Pruning build cache`, async () => {
         try {
-          await exec.exec('docker', ['builder', 'prune', '-f']);
+          await Exec.exec('docker', ['builder', 'prune', '-f']);
         } catch (e: unknown) {
           core.error(`Failed to prune build cache: ${e}`);
         }
@@ -128,31 +128,31 @@ actionsToolkit.run(
   },
   // post
   async () => {
-  const defContext = context.defaultContext();
-  const inputs: context.Inputs = await context.getInputs(defContext);
+    const inputs: context.Inputs = await context.getInputs();
     if (stateHelper.tmpDir.length > 0) {
       await core.group(`Removing temp folder ${stateHelper.tmpDir}`, async () => {
         fs.rmSync(stateHelper.tmpDir, {recursive: true});
       });
     }
-  if (inputs.removeImage && stateHelper.imageID.length > 0) {
-    await core.group(`Removing local image ${stateHelper.imageID}`, async () => {
-      try {
-        await exec.exec('docker', ['rmi', '-f', stateHelper.imageID]);
-      } catch (e) {
-        core.error(`Failed to remove image: ${e}`);
-      }
-    });
-  }
 
-  if (inputs.removeBuildCache) {
-    await core.group(`Pruning build cache`, async () => {
-      try {
-        await exec.exec('docker', ['builder', 'prune', '-f']);
-      } catch (e: unknown) {
-        core.error(`Failed to prune build cache: ${e}`);
-      }
-    });
-  }
+    if (inputs.removeImage && stateHelper.imageID.length > 0) {
+      await core.group(`Removing local image ${stateHelper.imageID}`, async () => {
+        try {
+          await Exec.exec('docker', ['rmi', '-f', stateHelper.imageID]);
+        } catch (e) {
+          core.error(`Failed to remove image: ${e}`);
+        }
+      });
+    }
+
+    if (inputs.removeBuildCache) {
+      await core.group(`Pruning build cache`, async () => {
+        try {
+          await Exec.exec('docker', ['builder', 'prune', '-f']);
+        } catch (e: unknown) {
+          core.error(`Failed to prune build cache: ${e}`);
+        }
+      });
+    }
   }
 );
